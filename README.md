@@ -27,20 +27,23 @@ cd ~\Downloads
 
 ## What It Does
 
-### Removes Bloatware (70+ Apps)
+### Removes Bloatware (90+ Apps)
 - Candy Crush, Solitaire, and other games
-- Microsoft Teams, Skype, Your Phone
+- Microsoft Teams (old + new), Skype, Your Phone
 - Xbox apps (optional - comment out if you game)
 - Third-party junk (TikTok, Netflix, Spotify preinstalls)
 - OneDrive (fully removed)
+- New Outlook, Dev Home, Family Safety, Quick Assist
+- Prevents Windows from silently reinstalling removed apps
 
 ### Disables Telemetry
 - Windows telemetry and diagnostic data
 - Customer Experience Improvement Program
 - Application telemetry
 - Error reporting
-- Blocks 50+ Microsoft telemetry domains via hosts file
+- Blocks 65+ Microsoft telemetry domains via hosts file
 - Firewall rules blocking telemetry IPs
+- Disables 16+ telemetry scheduled tasks
 
 ### Privacy Hardening
 - Disables Cortana
@@ -51,6 +54,16 @@ cd ~\Downloads
 - Disables location tracking
 - Disables input personalization (typing/inking data)
 - Disables clipboard history sync
+- Disables suggested actions on clipboard
+
+### Microsoft Edge Hardening
+- Disables Edge startup boost (background process)
+- Disables Edge background running
+- Disables Edge telemetry and data collection
+- Disables Edge shopping assistant
+- Disables Edge sidebar, Copilot, and collections
+- Disables Edge mini menu on text selection
+- Blocks first-run data import
 
 ### Windows 11 Specific
 - Removes Widgets
@@ -70,13 +83,20 @@ cd ~\Downloads
 - Disables Remote Assistance
 - Disables Find My Device
 - Windows Defender kept ON (just reduces telemetry)
+- 20+ privacy-invasive services disabled
 
 ### Performance Tweaks
 - Disables background apps
 - Disables hibernation
+- Disables Game Bar & Game DVR
+- Hides Task View button
 - Shows file extensions
 - Shows hidden files
 - Opens Explorer to "This PC"
+
+### Logging
+- Full session log saved to Desktop
+- Summary report showing exactly what was changed
 
 ---
 

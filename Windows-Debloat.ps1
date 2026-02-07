@@ -28,6 +28,16 @@ if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
 $ErrorActionPreference = "SilentlyContinue"
 $ProgressPreference = "SilentlyContinue"
 
+# Start logging to Desktop
+$LogFile = "$env:USERPROFILE\Desktop\Debloat-Log_$(Get-Date -Format 'yyyy-MM-dd_HH-mm-ss').txt"
+Start-Transcript -Path $LogFile -ErrorAction SilentlyContinue | Out-Null
+
+# Counters for summary report
+$Script:AppsRemoved = 0
+$Script:AppsNotFound = 0
+$Script:ServicesDisabled = 0
+$Script:TasksDisabled = 0
+
 Clear-Host
 Write-Host ""
 Write-Host "  +===============================================================+" -ForegroundColor Cyan
@@ -204,12 +214,32 @@ $BloatwareApps = @(
     "Clipchamp.Clipchamp"
     "Disney.37853FC22B2CE"
     "BytedancePte.Ltd.TikTok"
+
+    # Newer Windows 11 Bloatware
+    "Microsoft.OutlookForWindows"          # New Outlook (comment out if you use it)
+    "MSTeams"                              # New Teams package
+    "Microsoft.Windows.DevHome"            # Dev Home
+    "Microsoft.Windows.DevHomeGitHubExtension"
+    "Microsoft.Windows.DevHomeAzureExtension"
+    "MicrosoftCorporationII.MicrosoftFamily"  # Family Safety
+    "Microsoft.MicrosoftStickyNotes"
+    "Microsoft.549981C3F5F10_8wekyb3d8bbwe"   # Cortana (alternate package ID)
+    "MicrosoftCorporationII.QuickAssist"
+    "Microsoft.WindowsMeetNow"
 )
 
+$AllProvisioned = Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue
 foreach ($App in $BloatwareApps) {
-    Write-Host "  Removing: $App" -ForegroundColor Gray
-    Get-AppxPackage -Name $App -AllUsers | Remove-AppxPackage -AllUsers -ErrorAction SilentlyContinue
-    Get-AppxProvisionedPackage -Online | Where-Object DisplayName -Like $App | Remove-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue
+    $Package = Get-AppxPackage -Name $App -AllUsers -ErrorAction SilentlyContinue
+    $Provisioned = $AllProvisioned | Where-Object DisplayName -Like $App
+    if ($Package -or $Provisioned) {
+        Write-Host "  Removing: $App" -ForegroundColor Gray
+        $Package | Remove-AppxPackage -AllUsers -ErrorAction SilentlyContinue
+        $Provisioned | Remove-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue
+        $Script:AppsRemoved++
+    } else {
+        $Script:AppsNotFound++
+    }
 }
 #endregion
 
@@ -354,6 +384,14 @@ Set-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentD
 
 # Disable "Get the most out of Windows" Welcome Experience
 Set-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\UserProfileEngagement" -Name "ScoobeSystemSettingEnabled" -Type DWord -Value 0 -ErrorAction SilentlyContinue
+
+# Prevent Windows from reinstalling removed bloatware after updates
+New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent" -Force | Out-Null
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent" -Name "DisableWindowsConsumerFeatures" -Type DWord -Value 1
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent" -Name "DisableCloudOptimizedContent" -Type DWord -Value 1
+
+# Disable Suggested Apps in Start Menu
+Set-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager" -Name "FeatureManagementEnabled" -Type DWord -Value 0 -ErrorAction SilentlyContinue
 #endregion
 
 #region ============== DISABLE SCHEDULED TASKS (TELEMETRY) ==============
@@ -379,7 +417,8 @@ $TasksToDisable = @(
 )
 
 foreach ($Task in $TasksToDisable) {
-    Disable-ScheduledTask -TaskName $Task -ErrorAction SilentlyContinue | Out-Null
+    $Result = Disable-ScheduledTask -TaskName $Task -ErrorAction SilentlyContinue
+    if ($Result) { $Script:TasksDisabled++ }
 }
 #endregion
 
@@ -410,7 +449,7 @@ $TelemetryDomains = @(
     "watson.ppe.telemetry.microsoft.com"
     "telemetry.appex.bing.net"
     "telemetry.urs.microsoft.com"
-    "telemetry.appex.bing.net:443"
+    # telemetry.appex.bing.net:443 - REMOVED: hosts file does not support ports
     "settings-sandbox.data.microsoft.com"
     "vortex-sandbox.data.microsoft.com"
     "survey.watson.microsoft.com"
@@ -433,6 +472,25 @@ $TelemetryDomains = @(
     "feedback.windows.com"
     "feedback.microsoft-hohm.com"
     "feedback.search.microsoft.com"
+    "activity.windows.com"
+    "self.events.data.microsoft.com"
+    "v10.events.data.microsoft.com"
+    "v20.events.data.microsoft.com"
+    "v10.vortex-win.data.microsoft.com"
+    "us-v10.events.data.microsoft.com"
+    "eu-v10.events.data.microsoft.com"
+    "events.data.microsoft.com"
+    "umwatsonc.events.data.microsoft.com"
+    "ceuswatcab01.blob.core.windows.net"
+    "ceuswatcab02.blob.core.windows.net"
+    "eaus2watcab01.blob.core.windows.net"
+    "eaus2watcab02.blob.core.windows.net"
+    "weus2watcab01.blob.core.windows.net"
+    "weus2watcab02.blob.core.windows.net"
+    "msedge.net"
+    "data.microsoft.com"
+    "browser.events.data.msn.com"
+    "edge.microsoft.com"
 )
 
 $HostsContent = Get-Content $HostsPath -ErrorAction SilentlyContinue
@@ -445,8 +503,14 @@ foreach ($Domain in $TelemetryDomains) {
 }
 
 if ($NewEntries.Count -gt 0) {
-    Add-Content -Path $HostsPath -Value "`n# Windows Telemetry Block"
+    # Only add header if not already present
+    if ($HostsContent -notcontains "# Windows Telemetry Block") {
+        Add-Content -Path $HostsPath -Value "`n# Windows Telemetry Block"
+    }
     Add-Content -Path $HostsPath -Value $NewEntries
+    Write-Host "  Blocked $($NewEntries.Count) telemetry domains" -ForegroundColor Gray
+} else {
+    Write-Host "  All telemetry domains already blocked" -ForegroundColor Gray
 }
 #endregion
 
@@ -463,10 +527,6 @@ powercfg /h off
 
 # Disable Fast Startup (can cause issues)
 Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power" -Name "HiberbootEnabled" -Type DWord -Value 0
-
-# Disable SysMain (Superfetch) - Optional, can improve SSD life
-# Stop-Service "SysMain" -Force -ErrorAction SilentlyContinue
-# Set-Service "SysMain" -StartupType Disabled -ErrorAction SilentlyContinue
 
 # Disable Windows Search Indexing - Optional, uncomment if you don't use search
 # Stop-Service "WSearch" -Force -ErrorAction SilentlyContinue
@@ -502,6 +562,23 @@ Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Explorer" -Nam
 # Disable Windows Ink Workspace
 New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace" -Force | Out-Null
 Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace" -Name "AllowWindowsInkWorkspace" -Type DWord -Value 0
+
+# Hide Task View Button
+Set-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "ShowTaskViewButton" -Type DWord -Value 0
+
+# Minimize Search on Taskbar (show icon only, not full bar)
+Set-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search" -Name "SearchboxTaskbarMode" -Type DWord -Value 1
+
+# Disable News and Interests (Windows 10 Taskbar)
+New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds" -Force | Out-Null
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds" -Name "EnableFeeds" -Type DWord -Value 0
+
+# Disable Game Bar & Game DVR
+New-Item -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\GameDVR" -Force | Out-Null
+Set-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\GameDVR" -Name "AppCaptureEnabled" -Type DWord -Value 0
+New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\GameDVR" -Force | Out-Null
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\GameDVR" -Name "AllowGameDVR" -Type DWord -Value 0
+Set-ItemProperty -Path "HKCU:\System\GameConfigStore" -Name "GameDVR_Enabled" -Type DWord -Value 0 -ErrorAction SilentlyContinue
 #endregion
 
 #region ============== WINDOWS UPDATE SETTINGS ==============
@@ -599,6 +676,56 @@ Set-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\SearchSe
 # Restore Classic Right-Click Menu (Windows 11)
 New-Item -Path "HKCU:\SOFTWARE\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32" -Force | Out-Null
 Set-ItemProperty -Path "HKCU:\SOFTWARE\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32" -Name "(Default)" -Type String -Value ""
+
+# Disable Suggested Actions (Clipboard Feature)
+New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Force | Out-Null
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "EnableSmartScreen" -Type DWord -Value 1
+New-Item -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\SmartActionPlatform\SmartClipboard" -Force | Out-Null
+Set-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\SmartActionPlatform\SmartClipboard" -Name "Disabled" -Type DWord -Value 1
+#endregion
+
+#region ============== MICROSOFT EDGE HARDENING ==============
+Write-Host "[*] Hardening Microsoft Edge..." -ForegroundColor Yellow
+
+# Create Edge policy paths
+New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge" -Force | Out-Null
+
+# Disable Edge Startup Boost (runs in background)
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge" -Name "StartupBoostEnabled" -Type DWord -Value 0
+
+# Disable Edge Running in Background
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge" -Name "BackgroundModeEnabled" -Type DWord -Value 0
+
+# Disable Edge First Run Experience
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge" -Name "HideFirstRunExperience" -Type DWord -Value 1
+
+# Disable Edge Telemetry & Data Collection
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge" -Name "DiagnosticData" -Type DWord -Value 0
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge" -Name "PersonalizationReportingEnabled" -Type DWord -Value 0
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge" -Name "SendSiteInfoToImproveServices" -Type DWord -Value 0
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge" -Name "UserFeedbackAllowed" -Type DWord -Value 0
+
+# Disable Edge Shopping Features
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge" -Name "EdgeShoppingAssistantEnabled" -Type DWord -Value 0
+
+# Disable Edge Collections
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge" -Name "EdgeCollectionsEnabled" -Type DWord -Value 0
+
+# Disable Edge Sidebar / Discover
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge" -Name "HubsSidebarEnabled" -Type DWord -Value 0
+
+# Disable Edge Mini Menu on Text Selection
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge" -Name "MiniMenuEnabled" -Type DWord -Value 0 -ErrorAction SilentlyContinue
+
+# Disable Edge Copilot Sidebar
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge" -Name "CopilotCDPPageContext" -Type DWord -Value 0 -ErrorAction SilentlyContinue
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge" -Name "DiscoverPageContextEnabled" -Type DWord -Value 0
+
+# Prevent Edge from importing browser data on first run
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge" -Name "AutoImportAtFirstRun" -Type DWord -Value 4
+
+# Disable Edge Desktop Search Bar
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge" -Name "WebWidgetAllowed" -Type DWord -Value 0
 #endregion
 
 #region ============== WINDOWS DEFENDER HARDENING ==============
@@ -679,7 +806,7 @@ Write-Host "[*] Disabling Additional Privacy-Invasive Services..." -ForegroundCo
 $ServicesToDisable = @(
     "DiagTrack"                    # Connected User Experiences and Telemetry
     "dmwappushservice"             # Device Management WAP Push
-    "SysMain"                      # Superfetch - Optional, uncomment if on SSD
+    "SysMain"                      # Superfetch - safe to disable on SSDs
     # "WSearch"                    # Windows Search - Uncomment if you don't use search
     "MapsBroker"                   # Downloaded Maps Manager
     "lfsvc"                        # Geolocation Service
@@ -692,11 +819,20 @@ $ServicesToDisable = @(
     "XblGameSave"                  # Xbox Live Game Save (comment if gaming)
     "XboxNetApiSvc"                # Xbox Live Networking Service (comment if gaming)
     "XboxGipSvc"                   # Xbox Accessory Management (comment if gaming)
+    "PhoneSvc"                     # Phone Service
+    "TrkWks"                       # Distributed Link Tracking Client
+    "WpcMonSvc"                    # Parental Controls
+    "PcaSvc"                       # Program Compatibility Assistant
+    "wisvc"                        # Windows Insider Service
 )
 
 foreach ($Service in $ServicesToDisable) {
-    Stop-Service -Name $Service -Force -ErrorAction SilentlyContinue
-    Set-Service -Name $Service -StartupType Disabled -ErrorAction SilentlyContinue
+    $Svc = Get-Service -Name $Service -ErrorAction SilentlyContinue
+    if ($Svc) {
+        Stop-Service -Name $Service -Force -ErrorAction SilentlyContinue
+        Set-Service -Name $Service -StartupType Disabled -ErrorAction SilentlyContinue
+        $Script:ServicesDisabled++
+    }
 }
 #endregion
 
@@ -719,6 +855,16 @@ Write-Host "  |                                                               |"
 Write-Host "  |                    DEBLOAT COMPLETE!                          |" -ForegroundColor Green
 Write-Host "  |                                                               |" -ForegroundColor Green
 Write-Host "  +===============================================================+" -ForegroundColor Green
+Write-Host ""
+Write-Host "  SUMMARY:" -ForegroundColor White
+Write-Host "  ---------------------------------------------------------------" -ForegroundColor DarkGray
+Write-Host "    Apps removed:           $Script:AppsRemoved" -ForegroundColor Cyan
+Write-Host "    Apps not installed:     $Script:AppsNotFound (skipped)" -ForegroundColor DarkGray
+Write-Host "    Services disabled:      $Script:ServicesDisabled" -ForegroundColor Cyan
+Write-Host "    Scheduled tasks off:    $Script:TasksDisabled" -ForegroundColor Cyan
+Write-Host "    Telemetry domains:      $($TelemetryDomains.Count) blocked via hosts" -ForegroundColor Cyan
+Write-Host "  ---------------------------------------------------------------" -ForegroundColor DarkGray
+Write-Host "    Log saved to:           $LogFile" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "  A System Restore Point was created: 'Before Windows Debloat'" -ForegroundColor Cyan
 Write-Host "  If anything breaks, you can restore from there." -ForegroundColor Cyan
@@ -754,3 +900,6 @@ if ($Restart -eq "y" -or $Restart -eq "Y") {
     Write-Host "  Press any key to exit..." -ForegroundColor Gray
     $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 }
+
+# Stop logging
+Stop-Transcript -ErrorAction SilentlyContinue | Out-Null
