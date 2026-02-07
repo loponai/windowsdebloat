@@ -30,13 +30,13 @@ $ProgressPreference = "SilentlyContinue"
 
 Clear-Host
 Write-Host ""
-Write-Host "  ╔═══════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "  ║                                                               ║" -ForegroundColor Cyan
-Write-Host "  ║           WINDOWS DEBLOAT & PRIVACY SCRIPT                    ║" -ForegroundColor Cyan
-Write-Host "  ║                                                               ║" -ForegroundColor Cyan
-Write-Host "  ║     Free & Open Source - No Spyware, No BS                    ║" -ForegroundColor Cyan
-Write-Host "  ║                                                               ║" -ForegroundColor Cyan
-Write-Host "  ╚═══════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "  +===============================================================+" -ForegroundColor Cyan
+Write-Host "  |                                                               |" -ForegroundColor Cyan
+Write-Host "  |           WINDOWS DEBLOAT & PRIVACY SCRIPT                    |" -ForegroundColor Cyan
+Write-Host "  |                                                               |" -ForegroundColor Cyan
+Write-Host "  |     Free & Open Source - No Spyware, No BS                    |" -ForegroundColor Cyan
+Write-Host "  |                                                               |" -ForegroundColor Cyan
+Write-Host "  +===============================================================+" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  This script is 100% FREE and open source." -ForegroundColor White
 Write-Host "  Created by Tom Spark - a self-funded independent VPN" -ForegroundColor Gray
@@ -45,7 +45,7 @@ Write-Host ""
 Write-Host "  If this script helped you, consider supporting through" -ForegroundColor Gray
 Write-Host "  the affiliate links below (costs you nothing extra):" -ForegroundColor Gray
 Write-Host ""
-Write-Host "  ═══════════════════════════════════════════════════════════════" -ForegroundColor DarkGray
+Write-Host "  ===============================================================" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "   NORDVPN - Stop Your ISP From Spying On You" -ForegroundColor Green
 Write-Host ""
@@ -61,7 +61,7 @@ if ($OpenNord -eq "y" -or $OpenNord -eq "Y") {
     Start-Process "https://nordvpn.tomspark.tech/"
 }
 Write-Host ""
-Write-Host "  ───────────────────────────────────────────────────────────────" -ForegroundColor DarkGray
+Write-Host "  ---------------------------------------------------------------" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "   INCOGNI - Remove Yourself From Data Broker Sites" -ForegroundColor Green
 Write-Host ""
@@ -77,7 +77,7 @@ if ($OpenIncogni -eq "y" -or $OpenIncogni -eq "Y") {
     Start-Process "https://incogni.tomspark.tech/"
 }
 Write-Host ""
-Write-Host "  ═══════════════════════════════════════════════════════════════" -ForegroundColor DarkGray
+Write-Host "  ===============================================================" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "   MANUAL PRIVACY CHECKLIST" -ForegroundColor Magenta
 Write-Host ""
@@ -105,7 +105,7 @@ Write-Host ""
 Write-Host "   [8] ENABLE 2FA - Use Aegis, Raivo, or Bitwarden TOTP" -ForegroundColor White
 Write-Host "       Never use SMS for two-factor authentication" -ForegroundColor DarkGray
 Write-Host ""
-Write-Host "  ═══════════════════════════════════════════════════════════════" -ForegroundColor DarkGray
+Write-Host "  ===============================================================" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "  Press any key to start the debloat process..." -ForegroundColor Yellow
 Write-Host ""
@@ -714,16 +714,16 @@ Start-Service -Name "wuauserv" -ErrorAction SilentlyContinue
 #endregion
 
 Write-Host ""
-Write-Host "  ╔═══════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-Write-Host "  ║                                                               ║" -ForegroundColor Green
-Write-Host "  ║                    DEBLOAT COMPLETE!                          ║" -ForegroundColor Green
-Write-Host "  ║                                                               ║" -ForegroundColor Green
-Write-Host "  ╚═══════════════════════════════════════════════════════════════╝" -ForegroundColor Green
+Write-Host "  +===============================================================+" -ForegroundColor Green
+Write-Host "  |                                                               |" -ForegroundColor Green
+Write-Host "  |                    DEBLOAT COMPLETE!                          |" -ForegroundColor Green
+Write-Host "  |                                                               |" -ForegroundColor Green
+Write-Host "  +===============================================================+" -ForegroundColor Green
 Write-Host ""
 Write-Host "  A System Restore Point was created: 'Before Windows Debloat'" -ForegroundColor Cyan
 Write-Host "  If anything breaks, you can restore from there." -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  ───────────────────────────────────────────────────────────────" -ForegroundColor DarkGray
+Write-Host "  ---------------------------------------------------------------" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "  REMEMBER: This script only fixes Windows. Your ISP still" -ForegroundColor Yellow
 Write-Host "  sees everything unless you use a VPN." -ForegroundColor Yellow
@@ -740,7 +740,7 @@ if ($OpenIncogniEnd -eq "y" -or $OpenIncogniEnd -eq "Y") {
     Start-Process "https://incogni.tomspark.tech/"
 }
 Write-Host ""
-Write-Host "  ───────────────────────────────────────────────────────────────" -ForegroundColor DarkGray
+Write-Host "  ---------------------------------------------------------------" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "  Please RESTART your computer for all changes to take effect." -ForegroundColor White
 Write-Host ""
