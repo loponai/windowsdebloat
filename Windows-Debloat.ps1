@@ -1,15 +1,29 @@
-#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
     Windows Debloat Script for Privacy-Minded Users
 .DESCRIPTION
     Removes bloatware, disables telemetry, and configures privacy settings.
-    Run as Administrator in PowerShell.
+    Automatically requests Administrator privileges if needed.
 .NOTES
     - Creates a restore point before making changes
     - Some changes require a restart to take effect
     - Review each section and comment out anything you want to keep
 #>
+
+# Self-elevate to Administrator if not already running as admin
+if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Write-Host "Requesting Administrator privileges..." -ForegroundColor Yellow
+    try {
+        Start-Process -FilePath "powershell.exe" -ArgumentList "-ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
+    } catch {
+        Write-Host "ERROR: This script requires Administrator privileges." -ForegroundColor Red
+        Write-Host "Right-click PowerShell and select 'Run as Administrator', then run this script again." -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Press any key to exit..." -ForegroundColor Gray
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    }
+    exit
+}
 
 $ErrorActionPreference = "SilentlyContinue"
 $ProgressPreference = "SilentlyContinue"
@@ -735,4 +749,8 @@ Write-Host ""
 $Restart = Read-Host "  Restart now? (y/n)"
 if ($Restart -eq "y" -or $Restart -eq "Y") {
     Restart-Computer -Force
+} else {
+    Write-Host ""
+    Write-Host "  Press any key to exit..." -ForegroundColor Gray
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 }
