@@ -117,6 +117,13 @@ Write-Host "       Never use SMS for two-factor authentication" -ForegroundColor
 Write-Host ""
 Write-Host "  ===============================================================" -ForegroundColor DarkGray
 Write-Host ""
+Write-Host "  GAMER OPTIONS" -ForegroundColor Magenta
+Write-Host ""
+Write-Host "  Some apps are useful for gamers. Choose what to keep:" -ForegroundColor White
+Write-Host ""
+$KeepXbox = Read-Host "   Keep Xbox apps & Game Bar? (y/n)"
+$KeepDolby = Read-Host "   Keep Dolby Audio/Access? (y/n)"
+Write-Host ""
 Write-Host "  Press any key to start the debloat process..." -ForegroundColor Yellow
 Write-Host ""
 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
@@ -166,13 +173,6 @@ $BloatwareApps = @(
     "Microsoft.PowerAutomateDesktop"
     "Microsoft.BingSearch"
     "Microsoft.WindowsCamera"              # Comment out if you use camera
-    "Microsoft.GamingApp"                  # Comment out if you game
-    "Microsoft.Xbox.TCUI"                  # Comment out if you game
-    "Microsoft.XboxApp"                    # Comment out if you game
-    "Microsoft.XboxGameOverlay"            # Comment out if you game
-    "Microsoft.XboxGamingOverlay"          # Comment out if you game
-    "Microsoft.XboxIdentityProvider"       # Comment out if you game
-    "Microsoft.XboxSpeechToTextOverlay"    # Comment out if you game
 
     # Third-party Bloatware
     "2FE3CB00.PicsArt-PhotoStudio"
@@ -192,7 +192,6 @@ $BloatwareApps = @(
     "D52A8D61.FarmVille2CountryEscape"
     "D5EA27B7.Duolingo-LearnLanguagesforFree"
     "DB6EA5DB.CyberLinkMediaSuiteEssentials"
-    "DolbyLaboratories.DolbyAccess"
     "Drawboard.DrawboardPDF"
     "Fitbit.FitbitCoach"
     "Flipboard.Flipboard"
@@ -227,6 +226,24 @@ $BloatwareApps = @(
     "MicrosoftCorporationII.QuickAssist"
     "Microsoft.WindowsMeetNow"
 )
+
+# Conditionally add Xbox apps based on user choice
+if ($KeepXbox -ne "y" -and $KeepXbox -ne "Y") {
+    $BloatwareApps += @(
+        "Microsoft.GamingApp"
+        "Microsoft.Xbox.TCUI"
+        "Microsoft.XboxApp"
+        "Microsoft.XboxGameOverlay"
+        "Microsoft.XboxGamingOverlay"
+        "Microsoft.XboxIdentityProvider"
+        "Microsoft.XboxSpeechToTextOverlay"
+    )
+}
+
+# Conditionally add Dolby based on user choice
+if ($KeepDolby -ne "y" -and $KeepDolby -ne "Y") {
+    $BloatwareApps += "DolbyLaboratories.DolbyAccess"
+}
 
 $AllProvisioned = Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue
 foreach ($App in $BloatwareApps) {
@@ -573,12 +590,14 @@ Set-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search" 
 New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds" -Force | Out-Null
 Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds" -Name "EnableFeeds" -Type DWord -Value 0
 
-# Disable Game Bar & Game DVR
-New-Item -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\GameDVR" -Force | Out-Null
-Set-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\GameDVR" -Name "AppCaptureEnabled" -Type DWord -Value 0
-New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\GameDVR" -Force | Out-Null
-Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\GameDVR" -Name "AllowGameDVR" -Type DWord -Value 0
-Set-ItemProperty -Path "HKCU:\System\GameConfigStore" -Name "GameDVR_Enabled" -Type DWord -Value 0 -ErrorAction SilentlyContinue
+# Disable Game Bar & Game DVR (skip if user wants to keep Xbox/gaming)
+if ($KeepXbox -ne "y" -and $KeepXbox -ne "Y") {
+    New-Item -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\GameDVR" -Force | Out-Null
+    Set-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\GameDVR" -Name "AppCaptureEnabled" -Type DWord -Value 0
+    New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\GameDVR" -Force | Out-Null
+    Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\GameDVR" -Name "AllowGameDVR" -Type DWord -Value 0
+    Set-ItemProperty -Path "HKCU:\System\GameConfigStore" -Name "GameDVR_Enabled" -Type DWord -Value 0 -ErrorAction SilentlyContinue
+}
 #endregion
 
 #region ============== WINDOWS UPDATE SETTINGS ==============
@@ -815,16 +834,22 @@ $ServicesToDisable = @(
     "RetailDemo"                   # Retail Demo Service
     "WMPNetworkSvc"                # Windows Media Player Network Sharing
     "WerSvc"                       # Windows Error Reporting Service
-    "XblAuthManager"               # Xbox Live Auth Manager (comment if gaming)
-    "XblGameSave"                  # Xbox Live Game Save (comment if gaming)
-    "XboxNetApiSvc"                # Xbox Live Networking Service (comment if gaming)
-    "XboxGipSvc"                   # Xbox Accessory Management (comment if gaming)
     "PhoneSvc"                     # Phone Service
     "TrkWks"                       # Distributed Link Tracking Client
     "WpcMonSvc"                    # Parental Controls
     "PcaSvc"                       # Program Compatibility Assistant
     "wisvc"                        # Windows Insider Service
 )
+
+# Conditionally add Xbox services based on user choice
+if ($KeepXbox -ne "y" -and $KeepXbox -ne "Y") {
+    $ServicesToDisable += @(
+        "XblAuthManager"               # Xbox Live Auth Manager
+        "XblGameSave"                  # Xbox Live Game Save
+        "XboxNetApiSvc"                # Xbox Live Networking Service
+        "XboxGipSvc"                   # Xbox Accessory Management
+    )
+}
 
 foreach ($Service in $ServicesToDisable) {
     $Svc = Get-Service -Name $Service -ErrorAction SilentlyContinue
